@@ -1,0 +1,50 @@
+import os
+import discord
+import asyncio
+from datetime import datetime, timedelta
+import pytz
+
+TOKEN = os.getenv("DISCORD_BOT_TOKEN")  # Discord Bot Token
+CHANNEL_ID = 1335676311838134355  # Ersetze mit deiner Discord-Kanal-ID
+
+# Sessions mit Zeiten (im 24h-Format)
+SESSIONS = [
+    {"name": "Trading Session 1", "time": "15:55", "timezone": "Europe/Berlin"},
+    {"name": "Trading Session 2", "time": "19:35", "timezone": "Europe/Berlin"},
+]
+
+intents = discord.Intents.default()
+client = discord.Client(intents=intents)
+
+async def send_reminders():
+    await client.wait_until_ready()
+    channel = client.get_channel(CHANNEL_ID)
+
+    while not client.is_closed():
+        now = datetime.now(pytz.utc)
+
+        for session in SESSIONS:
+            session_time = datetime.strptime(session["time"], "%H:%M").time()
+            session_tz = pytz.timezone(session["timezone"])
+            session_now = now.astimezone(session_tz).time()
+
+            # Wenn es 10 Minuten vor der Handelszeit ist
+            reminder_time = (datetime.combine(datetime.today(), session_time) - timedelta(minutes=10)).time()
+            if session_now.hour == reminder_time.hour and session_now.minute == reminder_time.minute:
+                await channel.send(f"⏰ **In 10 Minuten beginnt die {session['name']}!** Bereitet euch vor! 📊🚀")
+                await asyncio.sleep(60)  # 1 Minute warten, um Dopplungen zu vermeiden
+
+            # Wenn es genau die Handelszeit ist (z.B. 15:55 oder 19:35)
+            if session_now.hour == session_time.hour and session_now.minute == session_time.minute:
+                await channel.send(f"⏰ **{session['name']} beginnt jetzt!** Viel Erfolg beim Trading! 📊💰")
+                await asyncio.sleep(60)  # 1 Minute warten, um Dopplungen zu vermeiden
+
+        await asyncio.sleep(30)  # Alle 30 Sekunden prüfen
+
+@client.event
+async def on_ready():
+    print(f"✅ Bot {client.user} ist gestartet!")
+    client.loop.create_task(send_reminders())
+
+client.run(TOKEN)
+
