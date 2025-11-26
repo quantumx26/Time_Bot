@@ -9,7 +9,7 @@ data_store = {}
 
 # Feste Gruppen-Zimmer-Zuordnung
 groups = [
-    "Abio & Luana", "Laura & Emir", "Giorgia & Lennox",
+    "Fabio & Luana", "Laura & Emir", "Giorgia & Lennox",
     "Lucia & Ussama & Savio", "Yvonne & Orazio", "Loredana & Daniel",
     "Tanja & Domenico", "Luca & Luigi", "Marco & Davide"
 ]
