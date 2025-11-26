@@ -1,50 +1,89 @@
-import os
-import discord
-import asyncio
-from datetime import datetime, timedelta
-import pytz
+from flask import Flask, render_template_string, request, redirect, url_for
+import json
+import random
+import string
 
-TOKEN = os.getenv("DISCORD_BOT_TOKEN")  # Discord Bot Token
-CHANNEL_ID = 1335676311838134355  # Ersetze mit deiner Discord-Kanal-ID
+app = Flask(__name__)
 
-# Sessions mit Zeiten (im 24h-Format)
-SESSIONS = [
-    {"name": "Trading Session 1", "time": "15:55", "timezone": "Europe/Berlin"},
-    {"name": "Trading Session 2", "time": "19:35", "timezone": "Europe/Berlin"},
-]
+# HTML-Template
+template = """
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Zimmerziehung</title>
+<style>
+body{font-family:sans-serif;margin:20px;}
+textarea,input,button{font-size:1rem;margin:5px 0;padding:5px;}
+.card{border:1px solid #ddd;padding:12px;border-radius:8px;margin-bottom:12px;}
+.link-box{margin:5px 0;display:flex;gap:5px;}
+</style>
+</head>
+<body>
+<h1>Digitale Zimmerziehung</h1>
 
-intents = discord.Intents.default()
-client = discord.Client(intents=intents)
+{% if not assigned %}
+<div class="card">
+<form method="post">
+  <label>Personen (Komma oder Zeilen getrennt)<br>
+    <textarea name="persons" rows="5" required>{{persons}}</textarea>
+  </label><br>
+  <label>Zimmer (gleich viele oder mehr)<br>
+    <textarea name="rooms" rows="5" required>{{rooms}}</textarea>
+  </label><br>
+  <button type="submit">Links generieren</button>
+</form>
+</div>
+{% else %}
+<div class="card">
+  <strong>Links für jede Person:</strong>
+  {% for p in assigned %}
+  <div class="link-box">
+    <span>{{p['name']}}</span>
+    <input type="text" value="{{p['link']}}" readonly size="50">
+    <button onclick="navigator.clipboard.writeText('{{p['link']}}')">Kopieren</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
-async def send_reminders():
-    await client.wait_until_ready()
-    channel = client.get_channel(CHANNEL_ID)
+</body>
+</html>
+"""
 
-    while not client.is_closed():
-        now = datetime.now(pytz.utc)
+def rand_code(length=6):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
-        for session in SESSIONS:
-            session_time = datetime.strptime(session["time"], "%H:%M").time()
-            session_tz = pytz.timezone(session["timezone"])
-            session_now = now.astimezone(session_tz).time()
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        persons = [p.strip() for p in request.form["persons"].splitlines() if p.strip()]
+        rooms = [r.strip() for r in request.form["rooms"].splitlines() if r.strip()]
 
-            # Wenn es 10 Minuten vor der Handelszeit ist
-            reminder_time = (datetime.combine(datetime.today(), session_time) - timedelta(minutes=10)).time()
-            if session_now.hour == reminder_time.hour and session_now.minute == reminder_time.minute:
-                await channel.send(f"⏰ **In 10 Minuten beginnt die {session['name']}!** Bereitet euch vor! 📊🚀")
-                await asyncio.sleep(60)  # 1 Minute warten, um Dopplungen zu vermeiden
+        if len(rooms) < len(persons):
+            rooms += ["Zimmer "+str(i+1) for i in range(len(rooms), len(persons))]
 
-            # Wenn es genau die Handelszeit ist (z.B. 15:55 oder 19:35)
-            if session_now.hour == session_time.hour and session_now.minute == session_time.minute:
-                await channel.send(f"⏰ **{session['name']} beginnt jetzt!** Viel Erfolg beim Trading! 📊💰")
-                await asyncio.sleep(60)  # 1 Minute warten, um Dopplungen zu vermeiden
+        random.shuffle(rooms)
+        assigned_rooms = rooms[:len(persons)]
+        random.shuffle(assigned_rooms)
 
-        await asyncio.sleep(30)  # Alle 30 Sekunden prüfen
+        assigned = []
+        for i, name in enumerate(persons):
+            code = rand_code()
+            payload = {"name": name, "code": code, "room": assigned_rooms[i]}
+            link = url_for('draw', data=json.dumps(payload), _external=True)
+            assigned.append({"name": name, "link": link})
+        return render_template_string(template, assigned=assigned, persons="", rooms="")
+    return render_template_string(template, assigned=None, persons="", rooms="")
 
-@client.event
-async def on_ready():
-    print(f"✅ Bot {client.user} ist gestartet!")
-    client.loop.create_task(send_reminders())
+@app.route("/draw")
+def draw():
+    data = request.args.get("data")
+    try:
+        obj = json.loads(data)
+    except:
+        return "Ungültige Daten"
+    return f"<h2>Hallo {obj['name']}</h2><p>Dein Zimmer: <strong>{obj['room']}</strong></p>"
 
-client.run(TOKEN)
-
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
