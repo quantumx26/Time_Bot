@@ -9,21 +9,21 @@ data_store = {}
 
 # Feste Gruppen-Zimmer-Zuordnung
 groups = [
-    "Fabio & Luana", "Laura & Emir", "Giorgia & Lennox",
+    "Fabio & Luana", "Laura & Emir", "Tanja & Domenico",
     "Lucia & Ussama & Savio", "Yvonne & Orazio", "Loredana & Daniel",
-    "Tanja & Domenico", "Luca & Luigi", "Marco & Davide"
+    "Giorgia & Lennox", "Marco & Davide","Luca & Luigi"
 ]
 
 rooms = [
-    "Zimmer 7 / Haus 2 - Doppelbett",
-    "Zimmer 4 / Haus 2 - Doppelbett",
-    "Zimmer 6 / Haus 2 - Schlafcouch",
-    "Zimmer 3 / Haus 2 - Doppelbett",
+    "Zimmer 1 unten / Haus 2 - Doppelbett",
+    "Zimmer 2 unten / Haus 2 - Doppelbett",
     "Zimmer 2 / Haus 1 - Doppelbett",
-    "Zimmer 6 / Haus 2 - Doppelbett",
-    "Zimmer 5 / Haus 2 - Doppelbett",
+    "Zimmer 3 unten / Haus 2 - Doppelbett",
     "Zimmer 1 / Haus 1 - Doppelbett",
-    "Zimmer 1 / Haus 1 - Schlafcouch"
+    "Zimmer 4 oben/ Haus 2 - Doppelbett",
+    "Zimmer 1 / Haus 1 - Schlafcouch",
+    "Zimmer 4 oben / Haus 2 - Schlafcouch",
+    "Wohnzimmer unten / Haus 2 - Schlafcouch"
 ]
 
 # HTML Vorlage für Startseite
