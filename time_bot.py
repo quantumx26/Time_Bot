@@ -32,12 +32,41 @@ HTML_FORM = """
 {% endif %}
 """
 
-# HTML Vorlage für gezogenes Zimmer
+# HTML Vorlage für gezogenes Zimmer mit Animation
 HTML_DRAW = """
 <!doctype html>
+<html>
+<head>
 <title>Zimmer</title>
+<style>
+  body { font-family: Arial; text-align: center; padding: 50px; }
+  .spinner {
+    margin: 50px auto;
+    width: 60px;
+    height: 60px;
+    border: 6px solid #f3f3f3;
+    border-top: 6px solid #3498db;
+    border-radius: 50%;
+    animation: spin 2s linear infinite;
+  }
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+  #room { display: none; font-size: 24px; margin-top: 20px; }
+</style>
+</head>
+<body>
 <h2>{{ name }}</h2>
-<p>Dein Zimmer: {{ room }}</p>
+<div class="spinner" id="spinner"></div>
+<div id="room">Dein Zimmer: {{ room }}</div>
+
+<script>
+  // Nach 2 Sekunden die Animation ausblenden und Zimmer zeigen
+  setTimeout(function() {
+    document.getElementById("spinner").style.display = "none";
+    document.getElementById("room").style.display = "block";
+  }, 2000);
+</script>
+</body>
+</html>
 """
 
 # Zufälligen Code generieren
@@ -66,7 +95,7 @@ def index():
 
         # Zimmer vorbereiten (ein Los pro Zimmer)
         available_rooms = [{"name": r, "count": 1} for r in rooms_input]
-        random.shuffle(available_rooms)  # optional
+        random.shuffle(available_rooms)
 
         for name in names:
             room = pick_room()
