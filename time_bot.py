@@ -1,90 +1,68 @@
-
 from flask import Flask, render_template_string, request, redirect, url_for
-import json
 import random
 import string
 
 app = Flask(__name__)
 
-# HTML-Template
-template = """
-<!doctype html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<title>Zimmerziehung</title>
-<style>
-body{font-family:sans-serif;margin:20px;}
-textarea,input,button{font-size:1rem;margin:5px 0;padding:5px;}
-.card{border:1px solid #ddd;padding:12px;border-radius:8px;margin-bottom:12px;}
-.link-box{margin:5px 0;display:flex;gap:5px;}
-</style>
-</head>
-<body>
-<h1>Digitale Zimmerziehung</h1>
+# Serverseitige Speicherung: code -> {"name": ..., "room": ...}
+data_store = {}
 
-{% if not assigned %}
-<div class="card">
+# HTML Vorlage
+HTML_FORM = """
+<!doctype html>
+<title>Zimmerziehung</title>
+<h2>Personen & Zimmer eintragen</h2>
 <form method="post">
-  <label>Personen (Komma oder Zeilen getrennt)<br>
-    <textarea name="persons" rows="5" required>{{persons}}</textarea>
-  </label><br>
-  <label>Zimmer (gleich viele oder mehr)<br>
-    <textarea name="rooms" rows="5" required>{{rooms}}</textarea>
-  </label><br>
+  <label>Personen (kommagetrennt):</label><br>
+  <input type="text" name="names" required><br><br>
+  <label>Zimmer (kommagetrennt, gleiche Anzahl oder mehr):</label><br>
+  <input type="text" name="rooms" required><br><br>
   <button type="submit">Links generieren</button>
 </form>
-</div>
-{% else %}
-<div class="card">
-  <strong>Links für jede Person:</strong>
-  {% for p in assigned %}
-  <div class="link-box">
-    <span>{{p['name']}}</span>
-    <input type="text" value="{{p['link']}}" readonly size="50">
-    <button onclick="navigator.clipboard.writeText('{{p['link']}}')">Kopieren</button>
-  </div>
-  {% endfor %}
-</div>
+{% if links %}
+<h3>Links für jede Person:</h3>
+<ul>
+{% for name, link in links.items() %}
+  <li>{{ name }}: <a href="{{ link }}" target="_blank">{{ link }}</a></li>
+{% endfor %}
+</ul>
 {% endif %}
-
-</body>
-</html>
 """
 
-def rand_code(length=6):
+HTML_DRAW = """
+<!doctype html>
+<title>Zimmer</title>
+<h2>{{ name }}</h2>
+<p>Dein Zimmer: {{ room }}</p>
+"""
+
+# Funktion: zufälliger Code
+def generate_code(length=6):
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    links = {}
     if request.method == "POST":
-        persons = [p.strip() for p in request.form["persons"].splitlines() if p.strip()]
-        rooms = [r.strip() for r in request.form["rooms"].splitlines() if r.strip()]
+        names = [n.strip() for n in request.form["names"].split(",") if n.strip()]
+        rooms = [r.strip() for r in request.form["rooms"].split(",") if r.strip()]
+        if len(rooms) < len(names):
+            return "Es müssen mindestens genauso viele Zimmer wie Personen vorhanden sein!", 400
+        
+        random.shuffle(rooms)  # Zimmer zufällig verteilen
+        
+        for name, room in zip(names, rooms):
+            code = generate_code()
+            data_store[code] = {"name": name, "room": room}
+            links[name] = url_for("draw", code=code, _external=True)
+    return render_template_string(HTML_FORM, links=links)
 
-        if len(rooms) < len(persons):
-            rooms += ["Zimmer "+str(i+1) for i in range(len(rooms), len(persons))]
-
-        random.shuffle(rooms)
-        assigned_rooms = rooms[:len(persons)]
-        random.shuffle(assigned_rooms)
-
-        assigned = []
-        for i, name in enumerate(persons):
-            code = rand_code()
-            payload = {"name": name, "code": code, "room": assigned_rooms[i]}
-            link = url_for('draw', data=json.dumps(payload), _external=True)
-            assigned.append({"name": name, "link": link})
-        return render_template_string(template, assigned=assigned, persons="", rooms="")
-    return render_template_string(template, assigned=None, persons="", rooms="")
-
-@app.route("/draw")
-def draw():
-    data = request.args.get("data")
-    try:
-        obj = json.loads(data)
-    except:
-        return "Ungültige Daten"
-    return f"<h2>Hallo {obj['name']}</h2><p>Dein Zimmer: <strong>{obj['room']}</strong></p>"
+@app.route("/draw/<code>")
+def draw(code):
+    person = data_store.get(code)
+    if not person:
+        return "Ungültiger Link", 404
+    return render_template_string(HTML_DRAW, name=person["name"], room=person["room"])
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)
